@@ -1,0 +1,5 @@
+.env
+firmware/.pio/
+firmware/include/config.local.h
+firmware/assets/eyes/*.png
+node_modules/

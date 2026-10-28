@@ -1,0 +1,51 @@
+services:
+  sticks3-buddy:
+    build: .
+    image: sticks3-buddy:local
+    container_name: sticks3-buddy
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "5810:5810"
+    depends_on:
+      - buddy-stt
+      - buddy-tts
+
+  buddy-stt:
+    image: fedirz/faster-whisper-server:latest-cuda@sha256:0b64050ad0b9244745746b652473ee42a8d5454d501877a252c3e65f631ffc99
+    container_name: sticks3-buddy-stt
+    restart: unless-stopped
+    runtime: nvidia
+    environment:
+      NVIDIA_VISIBLE_DEVICES: all
+      NVIDIA_DRIVER_CAPABILITIES: compute,utility
+      DEFAULT_LANGUAGE: en
+      ENABLE_UI: "false"
+      WHISPER__MODEL: Systran/faster-distil-whisper-small.en
+      WHISPER__TTL: "-1"
+    volumes:
+      - /mnt/user/appdata/sticks3-buddy/huggingface:/root/.cache/huggingface
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        - CMD
+        - /root/faster-whisper-server/.venv/bin/python
+        - -c
+        - >-
+          import json,urllib.request;
+          u='http://127.0.0.1:8000';
+          m=json.load(urllib.request.urlopen(u+'/api/ps'))['models'];
+          exit(0) if 'Systran/faster-distil-whisper-small.en' in m else
+          urllib.request.urlopen(urllib.request.Request(u+'/api/ps/Systran/faster-distil-whisper-small.en',method='POST'),timeout=55)
+      interval: 30s
+      timeout: 60s
+      retries: 3
+      start_period: 90s
+
+  buddy-tts:
+    image: ghcr.io/remsky/kokoro-fastapi-cpu:v0.9.0@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c
+    container_name: sticks3-buddy-tts
+    restart: unless-stopped
+    expose:
+      - "8880"
